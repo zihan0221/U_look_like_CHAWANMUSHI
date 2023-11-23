@@ -1,5 +1,6 @@
 import numpy as np
 import quaternion
+import random
 import OpenGL.GLUT as GLUT
 import OpenGL.GL as GL
 import camera
@@ -32,12 +33,26 @@ class Wnd:
         self.m_planeShader = shaderProgram.CreatePlaneShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.timer = 0
-
+    def RandomizeDices(self):
+        for i in range(self.m_diceCnt):
+            flag = True
+            while flag:
+                flag = False
+                self.m_dices[i].m_pos = np.array((random.uniform(-5,5), random.uniform(1,8), random.uniform(-5,5)))
+                self.m_dices[i].m_rot = quaternion.from_euler_angles((random.uniform(0, np.pi*2), random.uniform(0, np.pi * 2), random.uniform(0,np.pi * 2)))
+                for j in range(0, i):
+                    col, _, _ = physicsSolver.TestCollisionDiceAndDice(self.m_dices[i], self.m_dices[j])
+                    if col:
+                        flag = True
+                        break
+                    col, _, _ = physicsSolver.TestCollisionDiceAndDice(self.m_dices[j], self.m_dices[i])
+                    if col:
+                        flag = True
+                        break
     def __CreateObject(self):
-        self.dice = dice.Dice()
-        self.dice.m_pos[1] = 5
-        self.dice.m_pos[2] = -3
-        self.dice.m_rot = quaternion.from_euler_angles((1, 1, 1))
+        self.m_dices = [dice.Dice() for _ in range(6)]
+        self.m_diceCnt = 6
+        self.RandomizeDices()
 
     def __Redraw(self, t):
         GLUT.glutPostRedisplay()
@@ -45,13 +60,19 @@ class Wnd:
 
     def __DisplayFunc(self):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-        physicsSolver.SolveDiceAndPlane(self.dice, 0.06)
+        for i in range(self.m_diceCnt):
+            physicsSolver.SolveDiceAndPlane(self.m_dices[i], 0.06)
+        for i in range(self.m_diceCnt):
+            for j in range(i + 1, self.m_diceCnt):
+                physicsSolver.SolveDiceAndDice(self.m_dices[i], self.m_dices[j], 0.06)
+                physicsSolver.SolveDiceAndDice(self.m_dices[j], self.m_dices[i], 0.06)
         GL.glUseProgram(self.m_diceShader)
         viewMatrix = self.m_camera.GetViewMatrix()
         GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
         # Draw Dice
-        self.dice.Draw()
-
+        for i in range(self.m_diceCnt):
+            self.m_dices[i].Draw()
+        # Draw Plane
         GL.glUseProgram(self.m_planeShader)
         GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
@@ -83,5 +104,4 @@ class Wnd:
         elif c == b'q':
             self.m_camera.m_pos[1] -= 0.1
         elif c == b'p':
-            self.dice.m_pos[1] = 5
-            self.dice.m_vel[0] = 1
+            self.RandomizeDices()

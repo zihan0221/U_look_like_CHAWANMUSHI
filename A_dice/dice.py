@@ -4,11 +4,16 @@ import quaternion
 
 
 class Dice:
+    diceCnt = 0
+
     def __init__(self):
         self.m_pos = np.array([0.0, 0.0, 0.0])
         self.m_rot = np.quaternion(1, 0, 0, 0)
         self.m_vel = np.array([0.0, 0.0, 0.0])
         self.m_omega = np.array([0.0, 0.0, 0.0])
+        self.m_id = Dice.diceCnt
+        self.m_colliding = -1
+        Dice.diceCnt += 1
 
     def Draw(self):
         m = np.matrix([[*x, 0] for x in quaternion.as_rotation_matrix(self.m_rot)] + [[0, 0, 0, 1]])
