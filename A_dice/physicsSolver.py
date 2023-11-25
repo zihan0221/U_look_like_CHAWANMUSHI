@@ -30,6 +30,11 @@ def TestCollisionDiceAndPlane(d: dice.Dice):
 def SolveDiceAndPlane(d: dice.Dice, deltaTime):
     d.m_vel[1] -= 0.98 * deltaTime
     d.m_pos += d.m_vel * deltaTime
+    d.m_posQueue[d.m_queueNxt] = d.m_pos
+    d.m_avgPos = np.average(d.m_posQueue, axis=0)
+    d.m_rotQueue[d.m_queueNxt] = d.m_rot
+    d.m_avgRot = np.average(d.m_rotQueue, axis=0)
+    d.m_queueNxt = (d.m_queueNxt + 1) % dice.Dice.posQueueSize
     rot = d.m_omega * deltaTime
     rotlen = np.linalg.norm(rot)
     if rotlen > 1e-4:
@@ -41,6 +46,7 @@ def SolveDiceAndPlane(d: dice.Dice, deltaTime):
         rot = diceInverseMMOI * np.array((-r1[2], 0, r1[0]))
         deno = 1.0 / diceMass + rot[2] * r1[0] - rot[0] * r1[2]
         J = (COR + 1.0) * (-d.m_vel[1] + d.m_omega[0] * r1[2] - d.m_omega[2] * r1[0]) / deno
+        d.m_vel -= np.array((d.m_omega[1] * r1[2] - d.m_omega[2] * r1[1], 0, d.m_omega[0] * r1[1] - d.m_omega[1] * r1[0]))*deltaTime
         d.m_vel[1] += (J / diceMass)
         d.m_omega += rot * J
         d.m_pos[1] -= impact[1]

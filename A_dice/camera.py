@@ -27,14 +27,13 @@ class Camera:
         forward = self.GetForward()
         right = normalize(np.array([-forward[2], 0, forward[0]]))
         up = np.cross(right, forward)
-        return np.matrix([
-                          [*right, -np.dot(right, self.m_pos)],
+        return np.matrix([[*right, -np.dot(right, self.m_pos)],
                           [*up, -np.dot(up, self.m_pos)],
                           [*forward, -np.dot(forward, self.m_pos)],
                           [0, 0, 0, 1]])
 
     def GetProjectionMatrix(self):
-        fov = 90
+        fov = np.pi * 0.5
         width = 800
         height = 600
         zNear = 0.01

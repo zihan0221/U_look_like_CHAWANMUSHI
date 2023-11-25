@@ -7,6 +7,7 @@ import camera
 import shaderProgram
 import dice
 import physicsSolver
+import shadow
 
 
 class Wnd:
@@ -32,7 +33,12 @@ class Wnd:
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.m_planeShader = shaderProgram.CreatePlaneShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
+        self.m_depthTextures = shadow.CreateDepthTexture(len(shaderProgram.lights))
+        self.m_shadowMapTextures = shadow.CreateShadowMapTexture(len(shaderProgram.lights))
+        self.m_framebuffer = GL.glGenFramebuffers(1)
+        self.m_shadowShader = shaderProgram.CreateShadowShader()
         self.timer = 0
+
     def RandomizeDices(self):
         for i in range(self.m_diceCnt):
             flag = True
@@ -49,6 +55,7 @@ class Wnd:
                     if col:
                         flag = True
                         break
+
     def __CreateObject(self):
         self.m_dices = [dice.Dice() for _ in range(6)]
         self.m_diceCnt = 6
@@ -66,15 +73,30 @@ class Wnd:
             for j in range(i + 1, self.m_diceCnt):
                 physicsSolver.SolveDiceAndDice(self.m_dices[i], self.m_dices[j], 0.06)
                 physicsSolver.SolveDiceAndDice(self.m_dices[j], self.m_dices[i], 0.06)
-        GL.glUseProgram(self.m_diceShader)
+        # Draw shadow
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.m_framebuffer)
+        GL.glUseProgram(self.m_shadowShader)
+        GL.glViewport(0,0,shadow.SHADOW_MAP_SIZE,shadow.SHADOW_MAP_SIZE)
+        for i in range(self.m_depthTextures.size):
+            shadow.SetupShadow(self.m_depthTextures[i], self.m_shadowMapTextures[i], shaderProgram.lights[i])
+            for j in range(self.m_diceCnt):
+                self.m_dices[j].Draw()
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+        
+        GL.glViewport(0,0,800,600)
         viewMatrix = self.m_camera.GetViewMatrix()
-        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
         # Draw Dice
+        GL.glUseProgram(self.m_diceShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
         for i in range(self.m_diceCnt):
             self.m_dices[i].Draw()
         # Draw Plane
         GL.glUseProgram(self.m_planeShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
         GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
         GLUT.glutSwapBuffers()
 
@@ -105,3 +127,9 @@ class Wnd:
             self.m_camera.m_pos[1] -= 0.1
         elif c == b'p':
             self.RandomizeDices()
+        elif c == b'm':
+            self.m_dices[0].m_pos[2]+=0.1
+        elif c == b'n':
+            self.m_dices[0].m_pos[2]-=0.1
+        elif c == b'b':
+            self.m_dices[1].m_pos=np.array((0.0,1.0,0.0))
