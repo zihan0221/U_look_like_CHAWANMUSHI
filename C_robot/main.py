@@ -4,7 +4,7 @@ PathwayChar = ' '
 PlayerChar = '@'
 RobotChar = 'R'
 DeadRobotChar = 'X'
-WallTexture = '⫶⫶'
+WallTexture = '⠿'
 
 MapWidth = 40
 MapHeight = 20
