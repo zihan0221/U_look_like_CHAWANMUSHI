@@ -1,4 +1,6 @@
 import numpy as np
+from random import *
+import time
 import quaternion
 import random
 import OpenGL.GLUT as GLUT
@@ -11,6 +13,12 @@ import shadow
 
 
 class Wnd:
+    st=1e16
+    def ch(self):
+        if(time.time()-Wnd.st>2):
+            self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
+            self.m_camera.m_pitch=-1.6000000000000003
+            self.m_camera.m_yaw=-1.4707963267948965
     def __init__(self):
         GLUT.glutInit()
         GLUT.glutInitDisplayMode(
@@ -23,6 +31,9 @@ class Wnd:
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glEnable(GL.GL_DEPTH_TEST)
         self.m_camera = camera.Camera()
+        self.m_camera.m_pos=np.array(np.array((0.60108362,12.07439748,-0.36730854)))
+        self.m_camera.m_pitch=-1.6000000000000003
+        self.m_camera.m_yaw=-1.4707963267948965
         self.__CreateObject()
         self.__CreateShader()
         self.__Redraw(0)
@@ -40,11 +51,17 @@ class Wnd:
         self.timer = 0
 
     def RandomizeDices(self):
+        self.m_diceCnt=randint(1,6)
+        #旁邊camera
+        Wnd.st=time.time()
+        self.m_camera.m_pos=np.array((2.67276163,3.51072055,-8.99496325))
+        self.m_camera.m_pitch=-3.1000000000000014
+        self.m_camera.m_yaw=-1.4707963267948965
         for i in range(self.m_diceCnt):
             flag = True
             while flag:
                 flag = False
-                self.m_dices[i].m_pos = np.array((random.uniform(-5,5), random.uniform(1,8), random.uniform(-5,5)))
+                self.m_dices[i].m_pos = np.array((random.uniform(-5,5), random.uniform(6,8), random.uniform(-5,5)))
                 self.m_dices[i].m_rot = quaternion.from_euler_angles((random.uniform(0, np.pi*2), random.uniform(0, np.pi * 2), random.uniform(0,np.pi * 2)))
                 for j in range(0, i):
                     col, _, _ = physicsSolver.TestCollisionDiceAndDice(self.m_dices[i], self.m_dices[j])
@@ -55,10 +72,16 @@ class Wnd:
                     if col:
                         flag = True
                         break
+        #time.sleep(2)
+        '''
+        self.m_camera.m_pos=(0.60108362,12.07439748,-0.36730854)
+        self.m_camera.m_pitch=-1.6000000000000003
+        self.m_camera.m_yaw=-1.4707963267948965
+        '''
 
     def __CreateObject(self):
         self.m_dices = [dice.Dice() for _ in range(6)]
-        self.m_diceCnt = 6
+        self.m_diceCnt = randint(1,6)
         self.RandomizeDices()
 
     def __Redraw(self, t):
@@ -66,6 +89,7 @@ class Wnd:
         GLUT.glutTimerFunc(16, self.__Redraw, 0)
 
     def __DisplayFunc(self):
+        self.ch()
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         for i in range(self.m_diceCnt):
             physicsSolver.SolveDiceAndPlane(self.m_dices[i], 0.06)
@@ -101,6 +125,7 @@ class Wnd:
         GLUT.glutSwapBuffers()
 
     def __KeyboardFunc(self, c, x, y):
+        print(c)
         if c == b'a':
             right = self.m_camera.GetRightward()
             self.m_camera.m_pos -= 0.1 * right
@@ -133,3 +158,20 @@ class Wnd:
             self.m_dices[0].m_pos[2]-=0.1
         elif c == b'b':
             self.m_dices[1].m_pos=np.array((0.0,1.0,0.0))
+        elif c == b'i': #取得當前camera資訊
+            print(self.m_camera.m_pos)
+            print(self.m_camera.m_pitch)
+            print(self.m_camera.m_yaw)
+
+'''
+正上方camera資訊
+m_pos->[ 0.60108362 12.07439748 -0.36730854]
+m_pitch-1.6000000000000003
+m_yaw-1.4707963267948965
+
+旁邊camera資訊
+m_pos->[ 2.67276163  3.51072055 -8.99496325]
+m_pitch->-3.1000000000000014
+m_yaw->-1.4707963267948965
+A_dice/camera.py A_dice/dice.png A_dice/dice.py A_dice/physicsSolver.py A_dice/shaderProgram.py
+'''
