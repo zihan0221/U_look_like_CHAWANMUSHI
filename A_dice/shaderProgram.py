@@ -16,7 +16,6 @@ def LoadDiceTexture():
     GL.glBindTexture(GL.GL_TEXTURE_2D, tex)
     GL.glUniform1i(3, 0)
 
-
 def CreateShader(vertShaderSrc, fragShaderSrc, geomShaderSrc=None):
     programId = GL.glCreateProgram()
     vertShader = GL.glCreateShader(GL.GL_VERTEX_SHADER)

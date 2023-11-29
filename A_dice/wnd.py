@@ -16,9 +16,10 @@ class Wnd:
     st=1e16
     def ch(self):
         if(time.time()-Wnd.st>2):
-            self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
-            self.m_camera.m_pitch=-1.6000000000000003
-            self.m_camera.m_yaw=-1.4707963267948965
+            return 
+            #self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
+            #self.m_camera.m_pitch=-1.6000000000000003
+            #self.m_camera.m_yaw=-1.4707963267948965
     def __init__(self):
         GLUT.glutInit()
         GLUT.glutInitDisplayMode(
@@ -72,12 +73,6 @@ class Wnd:
                     if col:
                         flag = True
                         break
-        #time.sleep(2)
-        '''
-        self.m_camera.m_pos=(0.60108362,12.07439748,-0.36730854)
-        self.m_camera.m_pitch=-1.6000000000000003
-        self.m_camera.m_yaw=-1.4707963267948965
-        '''
 
     def __CreateObject(self):
         self.m_dices = [dice.Dice() for _ in range(6)]
@@ -119,13 +114,17 @@ class Wnd:
         # Draw Plane
         GL.glUseProgram(self.m_planeShader)
         shadow.BindShadowMapTexture(self.m_shadowMapTextures)
-        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)#plane
         GL.glUniform3fv(4, 1, self.m_camera.m_pos)
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
-        GLUT.glutSwapBuffers()
+        # test ->draw something on screen
 
+        GLUT.glutSwapBuffers()
+        
+
+        
     def __KeyboardFunc(self, c, x, y):
-        print(c)
+        #print(c)
         if c == b'a':
             right = self.m_camera.GetRightward()
             self.m_camera.m_pos -= 0.1 * right
@@ -162,6 +161,14 @@ class Wnd:
             print(self.m_camera.m_pos)
             print(self.m_camera.m_pitch)
             print(self.m_camera.m_yaw)
+        elif c == b'r':
+            self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
+            self.m_camera.m_pitch=-1.6000000000000003
+            self.m_camera.m_yaw=-1.4707963267948965
+        elif c == b'c':
+            self.m_camera.m_pos=np.array((2.67276163,3.51072055,-8.99496325))
+            self.m_camera.m_pitch=-3.1000000000000014
+            self.m_camera.m_yaw=-1.4707963267948965
 
 '''
 正上方camera資訊
