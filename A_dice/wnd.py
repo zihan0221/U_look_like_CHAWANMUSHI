@@ -53,6 +53,9 @@ class Wnd:
         self.m_shadowMapTextures = shadow.CreateShadowMapTexture(len(shaderProgram.lights))
         self.m_framebuffer = GL.glGenFramebuffers(1)
         self.m_shadowShader = shaderProgram.CreateShadowShader()
+
+        self.m_skyboxShader = shaderProgram.CreateSkyboxShader()
+        GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.timer = 0
     def PrintText(self,string,xx,yy,size):
         for i in range(len(string)):
@@ -131,6 +134,11 @@ class Wnd:
         GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)#plane
         GL.glUniform3fv(4, 1, self.m_camera.m_pos)
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+        # Draw Skybox
+        GL.glUseProgram(self.m_skyboxShader)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 36)
+
         # test ->draw something on screen
         GL.glDisable(GL.GL_DEPTH_TEST)
         GL.glUseProgram(self.m_alphabatShader)

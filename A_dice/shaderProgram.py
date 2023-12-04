@@ -28,6 +28,18 @@ def LoadAlphabatTexture():
     GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8,len(img[0]),len(img),0,GL.GL_RGBA, GL.GL_FLOAT,img)
     GL.glUniform1i(0, 1)
 
+def LoadSkyboxTexture():
+    img = plt.imread("sky.png")
+    tex = GL.glGenTextures(1)
+    GL.glActiveTexture(GL.GL_TEXTURE2)
+    GL.glBindTexture(GL.GL_TEXTURE_2D, tex)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+    GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8,len(img[0]),len(img),0,GL.GL_RGBA, GL.GL_FLOAT,img)
+    GL.glUniform1i(0, 2)
+
 def CreateShader(vertShaderSrc, fragShaderSrc, geomShaderSrc=None):
     programId = GL.glCreateProgram()
     vertShader = GL.glCreateShader(GL.GL_VERTEX_SHADER)
@@ -275,7 +287,7 @@ def CreateAlphabat():
     void main(){
         int c=input_ascii_code;
         float i,j,dd,dy,Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
-        c=c-' ';
+        c=c-32;
         i=float(c/16);
         j=float(c%16);
         
@@ -320,3 +332,59 @@ def CreateAlphabat():
     pid = CreateShader(vertShaderSrc, fragShaderSrc)
     LoadAlphabatTexture()
     return pid
+
+def CreateSkyboxShader():
+    vertShaderSrc = """
+    #version 450 core
+    layout(location=1) uniform mat4 viewTransform;
+    layout(location=2) uniform mat4 projTransform;
+    out vec3 fragPos;
+    void main(){
+        const float len = 28.8f;
+        vec3 p[]={
+            vec3(-len,-len,-len),
+            vec3( len,-len,-len),
+            vec3( len, len,-len),
+            vec3(-len, len,-len),
+
+            vec3(-len,-len, len),
+            vec3( len,-len, len),
+            vec3( len, len, len),
+            vec3(-len, len, len),
+
+        };
+        int index[]={
+            0,1,2,
+            0,2,3,
+            4,6,5,
+            4,7,6,
+            1,5,2,
+            2,5,6,
+            0,3,4,
+            3,7,4,
+            0,4,1,
+            1,4,5,
+            3,2,7,
+            2,6,7
+        };
+        vec3 tem = (viewTransform * vec4(p[index[gl_VertexID]],0.0f)).xyz;
+        gl_Position = projTransform * vec4(tem, 1.0);
+        fragPos = p[index[gl_VertexID]];
+    }
+    """
+    fragShaderSrc = """
+    #version 450 core
+    #define M_PI 3.1415926535897932384626433832795
+    layout(location=0) uniform sampler2D texSampler;
+    in vec3 fragPos;
+    out vec3 color;
+    void main(){
+        float theta = atan(fragPos.z, fragPos.x) / (2.0*M_PI) + 0.5;
+        float phi = atan(fragPos.y, length(vec2(fragPos.x,fragPos.z))) / (2.0*M_PI) + 0.5;
+        color = texture(texSampler, vec2(theta, -phi)).xyz;
+    }
+    """
+    pid = CreateShader(vertShaderSrc, fragShaderSrc)
+    LoadSkyboxTexture()
+    return pid
+    
