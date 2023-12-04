@@ -63,6 +63,7 @@ class Wnd:
             xx+=0.03*(size)
     def RandomizeDices(self):
         self.m_diceCnt=randint(1,6)
+
         #旁邊camera
         Wnd.st=time.time()
         self.m_camera.m_pos=np.array((2.67276163,3.51072055,-8.99496325))
@@ -70,6 +71,8 @@ class Wnd:
         self.m_camera.m_yaw=-1.4707963267948965
         for i in range(self.m_diceCnt):
             flag = True
+            self.m_dices[i].m_omega = np.array([0.0, 0.0, 0.0])
+            self.m_dices[i].m_vel = np.array([0.0, 0.0, 0.0])
             while flag:
                 flag = False
                 self.m_dices[i].m_pos = np.array((random.uniform(-5,5), random.uniform(6,8), random.uniform(-5,5)))
@@ -134,7 +137,7 @@ class Wnd:
         sum=str(b''.join(self.now_sum),'utf-8')
         self.PrintText(f"Enter the sum :{sum}",-1,-1+0.1,1.0)
         self.PrintText(f"{max(30-max(int(time.time())-int(self.begin_time),0),0)}",-0.1,1.0,2.0)
-        self.PrintText(f"Score:{self.score}",0.5,1.0,2.0)
+        self.PrintText(f"Score:{self.score}",0.3,1.0,2.0)
         GL.glEnable(GL.GL_DEPTH_TEST)   
         GLUT.glutSwapBuffers()
         
@@ -198,8 +201,11 @@ class Wnd:
             self.now_sum=[]
             if sum==self.target:
                 self.score+=4
+                
             else : 
                 self.score-=1
+
+            self.RandomizeDices()
 
 
 
