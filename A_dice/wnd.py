@@ -13,14 +13,17 @@ import shadow
 
 
 class Wnd:
-    st=1e16
     def ch(self):
-        if(time.time()-Wnd.st>2):
+        if(time.time()-self.st>2):
             return 
             #self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
             #self.m_camera.m_pitch=-1.6000000000000003
             #self.m_camera.m_yaw=-1.4707963267948965
     def __init__(self):
+        self.now_sum=[]
+        self.score=0
+        self.st=1e16
+        self.begin_time=time.time()
         GLUT.glutInit()
         GLUT.glutInitDisplayMode(
             GLUT.GLUT_DOUBLE | GLUT.GLUT_RGBA | GLUT.GLUT_DEPTH)
@@ -43,6 +46,7 @@ class Wnd:
     def __CreateShader(self):
         self.m_diceShader = shaderProgram.CreateDiceShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
+        self.m_alphabatShader = shaderProgram.CreateAlphabat()
         self.m_planeShader = shaderProgram.CreatePlaneShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.m_depthTextures = shadow.CreateDepthTexture(len(shaderProgram.lights))
@@ -50,7 +54,13 @@ class Wnd:
         self.m_framebuffer = GL.glGenFramebuffers(1)
         self.m_shadowShader = shaderProgram.CreateShadowShader()
         self.timer = 0
-
+    def PrintText(self,string,xx,yy,size):
+        for i in range(len(string)):
+            GL.glUniform1i(1,ord(string[i]))
+            GL.glUniform2f(3,xx,yy)
+            GL.glUniform1f(4,size)
+            GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+            xx+=0.03*(size)
     def RandomizeDices(self):
         self.m_diceCnt=randint(1,6)
         #旁邊camera
@@ -105,6 +115,7 @@ class Wnd:
         GL.glViewport(0,0,800,600)
         viewMatrix = self.m_camera.GetViewMatrix()
         # Draw Dice
+        self.target=0
         GL.glUseProgram(self.m_diceShader)
         shadow.BindShadowMapTexture(self.m_shadowMapTextures)
         GL.glUniform3fv(4, 1, self.m_camera.m_pos)
@@ -118,7 +129,13 @@ class Wnd:
         GL.glUniform3fv(4, 1, self.m_camera.m_pos)
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
         # test ->draw something on screen
-
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glUseProgram(self.m_alphabatShader)
+        sum=str(b''.join(self.now_sum),'utf-8')
+        self.PrintText(f"Enter the sum :{sum}",-1,-1+0.1,1.0)
+        self.PrintText(f"{max(30-max(int(time.time())-int(self.begin_time),0),0)}",-0.1,1.0,2.0)
+        self.PrintText(f"Score:{self.score}",0.5,1.0,2.0)
+        GL.glEnable(GL.GL_DEPTH_TEST)   
         GLUT.glutSwapBuffers()
         
 
@@ -169,6 +186,24 @@ class Wnd:
             self.m_camera.m_pos=np.array((2.67276163,3.51072055,-8.99496325))
             self.m_camera.m_pitch=-3.1000000000000014
             self.m_camera.m_yaw=-1.4707963267948965
+        if c == b'\x08':#backspace
+            if(len(self.now_sum)!=0):
+                self.now_sum.pop()
+        elif c >= b'0' and c <= b'9':
+            self.now_sum.append(c)
+        elif c == b'\r':#enter
+            sum=0
+            for i in self.now_sum:
+                sum=sum*10+int(i)-int(b'0')
+            self.now_sum=[]
+            if sum==self.target:
+                self.score+=4
+            else : 
+                self.score-=1
+
+
+
+
 
 '''
 正上方camera資訊

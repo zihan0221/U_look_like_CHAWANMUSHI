@@ -16,6 +16,18 @@ def LoadDiceTexture():
     GL.glBindTexture(GL.GL_TEXTURE_2D, tex)
     GL.glUniform1i(3, 0)
 
+def LoadAlphabatTexture():
+    img = plt.imread("ascii.png")
+    tex = GL.glGenTextures(1)
+    GL.glActiveTexture(GL.GL_TEXTURE1)
+    GL.glBindTexture(GL.GL_TEXTURE_2D, tex)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+    GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8,len(img[0]),len(img),0,GL.GL_RGBA, GL.GL_FLOAT,img)
+    GL.glUniform1i(0, 1)
+
 def CreateShader(vertShaderSrc, fragShaderSrc, geomShaderSrc=None):
     programId = GL.glCreateProgram()
     vertShader = GL.glCreateShader(GL.GL_VERTEX_SHADER)
@@ -249,4 +261,62 @@ def CreateShadowShader():
     }
     """
     pid = CreateShader(vertShaderSrc, fragShaderSrc, geomShaderSrc)
+    return pid
+
+def CreateAlphabat():
+    #to do
+    vertShaderSrc = """
+    #version 450 core
+    layout(location=1) uniform int input_ascii_code;
+    layout(location=3) uniform vec2 posi;
+    layout(location=4) uniform float size;
+
+    out vec2 pos;
+    void main(){
+        int c=input_ascii_code;
+        float i,j,dd,dy,Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+        c=c-' ';
+        i=float(c/16);
+        j=float(c%16);
+        
+        dd=0.05*size;
+        dy=0.07*size;
+        Ax=j/16.0,Ay=(i/6.0);
+        Bx=(j+1)/16.0,By=(i/6.0);
+        Cx=j/16.0,Cy=((i+1)/6.0);
+        Dx=(j+1)/16.0,Dy=(i+1)/6.0;
+        vec2 texp[]={//ascii上 0~1 0~1
+            vec2(Ax, Ay), vec2(Cx, Cy), vec2(Dx,Dy),
+            vec2(Dx,Dy), vec2(Bx,By), vec2(Ax,Ay)
+        };
+        float xx=posi.x;
+        float yy=posi.y;
+        Ax=xx,Ay=yy;
+        Bx=xx+dd,By=yy;
+        Cx=xx,Cy=(yy-dy);
+        Dx=xx+dd,Dy=yy-dy;
+        vec2 p[]={ //畫面上-1~1 -1~1
+            vec2(Ax, Ay), vec2(Cx, Cy), vec2(Dx,Dy),
+            vec2(Dx,Dy), vec2(Bx,By), vec2(Ax,Ay)
+        };
+        gl_Position = vec4(p[gl_VertexID], 0 , 1 );
+        pos=texp[gl_VertexID];
+    }
+    """
+    fragShaderSrc = """
+    #version 450 core
+    layout(location=0) uniform sampler2D texSampler;
+    layout(location=2) uniform vec2 position;
+
+    in vec2 pos;
+    out vec3 color;
+    void main(){
+        color = texture(texSampler,pos).xyz;
+        if(dot(color,color)>0.8){
+            discard;
+        }
+    }
+    """
+    pid = CreateShader(vertShaderSrc, fragShaderSrc)
+    LoadAlphabatTexture()
     return pid
