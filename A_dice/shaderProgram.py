@@ -117,7 +117,7 @@ def CreateDiceShader():
     """ + LIGHT_CONFIG + """
     in vec3 fragPos;
     in vec3 fragNorm;
-    out vec3 color;
+    out vec4 color;
     in vec2 fragTexCoord;
 
     float FresnelTerm(in vec3 N, in vec3 L) {
@@ -174,7 +174,7 @@ def CreateDiceShader():
             diffuse += shadow * c * kd * lightStr / dist2;
             specular += shadow * max(Specular(V, fragNorm, L), 0) * c * ks * lightStr / dist2;
         }
-        color = (diffuse / M_PI) * texColor + specular * lightColor;
+        color = vec4((diffuse / M_PI) * texColor + specular * lightColor, 1);
     }
     """
     pid = CreateShader(vertShaderSrc, fragShaderSrc)
@@ -206,7 +206,7 @@ def CreatePlaneShader():
 
     float Specular(in vec3 V, in vec3 N, in vec3 L){ const float roughness = 0.6; const float a = roughness * roughness; const float a2 = a * a; const vec3 H = normalize(V + L); const float k = a / 2; const float NH = dot(N, H); const float NL = dot(N, L); const float NV = dot(N, V); const float term1 = NH * NH * (a2 - 1) + 1; const float term2 = NL * (1 - k) + k; const float term3 = NV * (1 - k) + k; return a2 * (1.0f / (4.0 * M_PI)) / (term1 * term1 * term2 * term3); }
     in vec3 fragPos;
-    out vec3 color;
+    out vec4 color;
     void main(){
         const vec3 texColor = vec3(0.3, 0.3, 0.3);
         float diffuse = 0;
@@ -226,7 +226,7 @@ def CreatePlaneShader():
             diffuse += shadow * c * kd * lightStr / dist2;
             specular += shadow * max(Specular(V, fragNorm, L), 0) * c * ks * lightStr / dist2;
         }
-        color = (diffuse / M_PI) * texColor + specular * lightColor;
+        color = vec4((diffuse / M_PI) * texColor + specular * lightColor,1);
     }
     """
     pid = CreateShader(vertShaderSrc, fragShaderSrc)
@@ -319,14 +319,13 @@ def CreateAlphabat():
     #version 450 core
     layout(location=0) uniform sampler2D texSampler;
     layout(location=2) uniform vec2 position;
+    layout(location=5) uniform vec3 textColor;
 
     in vec2 pos;
-    out vec3 color;
+    out vec4 color;
     void main(){
-        color = texture(texSampler,pos).xyz;
-        if(dot(color,color)>0.8){
-            discard;
-        }
+        vec3 c = texture(texSampler,pos).xyz;
+        color = vec4((vec3(1)-c) * textColor, 1 - length(c));
     }
     """
     pid = CreateShader(vertShaderSrc, fragShaderSrc)
@@ -377,11 +376,11 @@ def CreateSkyboxShader():
     #define M_PI 3.1415926535897932384626433832795
     layout(location=0) uniform sampler2D texSampler;
     in vec3 fragPos;
-    out vec3 color;
+    out vec4 color;
     void main(){
         float theta = atan(fragPos.z, fragPos.x) / (2.0*M_PI) + 0.5;
         float phi = atan(fragPos.y, length(vec2(fragPos.x,fragPos.z))) / (2.0*M_PI) + 0.5;
-        color = texture(texSampler, vec2(theta, -phi)).xyz;
+        color = vec4(texture(texSampler, vec2(theta, -phi)).xyz,1);
     }
     """
     pid = CreateShader(vertShaderSrc, fragShaderSrc)

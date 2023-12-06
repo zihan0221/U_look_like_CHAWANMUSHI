@@ -26,3 +26,27 @@ class Dice:
         m[0, 3], m[1, 3], m[2, 3] = self.m_avgPos[0], self.m_avgPos[1], self.m_avgPos[2]
         GL.glUniformMatrix4fv(0, 1, GL.GL_TRUE, m)
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 36)
+
+    def GetPoint(self):
+        w,x,y,z = quaternion.as_float_array(self.m_rot)
+        a = (1.4142135623730950488016887242097 * w) / (2.0 * (w * w + y * y))
+        if 1-a*a<0:
+            return 5
+        b = np.sqrt(1 - a * a)
+        if np.abs(a*w-b*y - 0.70710678118654752440084436210485) > 1e-2:
+            if np.abs(a*w+b*y - 0.70710678118654752440084436210485) < 1e-2:
+                b = -b
+            else:
+                return 6
+        rot = np.quaternion(a, 0, b, 0) * self.m_rot
+        w,x,y,z = quaternion.as_float_array(rot)
+        if x > 0.5:
+            return 1
+        elif x < -0.5:
+            return 3
+        elif z > 0.5:
+            return 2
+        elif z < -0.5:
+            return 4
+        else:
+            return 5

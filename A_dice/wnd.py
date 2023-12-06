@@ -34,13 +34,17 @@ class Wnd:
         GL.glClearColor(0, 0, 0, 1)
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glEnable(GL.GL_DEPTH_TEST)
+        GL.glEnable(GL.GL_BLEND)
+        GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         self.m_camera = camera.Camera()
-        self.m_camera.m_pos=np.array(np.array((0.60108362,12.07439748,-0.36730854)))
-        self.m_camera.m_pitch=-1.6000000000000003
-        self.m_camera.m_yaw=-1.4707963267948965
+        self.m_camera.m_pos=np.array(np.array((0.60108362,2,-0.36730854)))
+        self.m_camera.m_yaw=3.1415926
+        self.m_camera.m_pitch=-0.5
         self.__CreateObject()
         self.__CreateShader()
         self.__Redraw(0)
+        self.__CurrentScene = self.DrawMenu
+        self.__CurrentKeyboard = self.MenuKeyboard
         GLUT.glutMainLoop()
 
     def __CreateShader(self):
@@ -57,11 +61,12 @@ class Wnd:
         self.m_skyboxShader = shaderProgram.CreateSkyboxShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.timer = 0
-    def PrintText(self,string,xx,yy,size):
+    def PrintText(self,string,xx=0,yy=0,size=1,color=(0,0,0)):
         for i in range(len(string)):
             GL.glUniform1i(1,ord(string[i]))
             GL.glUniform2f(3,xx,yy)
             GL.glUniform1f(4,size)
+            GL.glUniform3fv(5,1,color)
             GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
             xx+=0.03*(size)
     def RandomizeDices(self):
@@ -69,9 +74,9 @@ class Wnd:
 
         #旁邊camera
         Wnd.st=time.time()
-        self.m_camera.m_pos=np.array((2.67276163,3.51072055,-8.99496325))
-        self.m_camera.m_pitch=-3.1000000000000014
-        self.m_camera.m_yaw=-1.4707963267948965
+        #self.m_camera.m_pos=np.array((2.67276163,3.51072055,-8.99496325))
+        #self.m_camera.m_pitch=-3.1000000000000014
+        #self.m_camera.m_yaw=-1.4707963267948965
         for i in range(self.m_diceCnt):
             flag = True
             self.m_dices[i].m_omega = np.array([0.0, 0.0, 0.0])
@@ -99,7 +104,63 @@ class Wnd:
         GLUT.glutPostRedisplay()
         GLUT.glutTimerFunc(16, self.__Redraw, 0)
 
-    def __DisplayFunc(self):
+    def DrawMenu(self):
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+        theta = time.time() * 0.2
+        c = np.cos(theta)
+        s = np.sin(theta)
+        self.m_camera.m_pos[0] = 8 * c
+        self.m_camera.m_pos[2] = 8 * s
+        self.m_camera.m_yaw = theta + 3.1415926
+        for i in range(self.m_diceCnt):
+            physicsSolver.SolveDiceAndPlane(self.m_dices[i], 0.06)
+        for i in range(self.m_diceCnt):
+            for j in range(i + 1, self.m_diceCnt):
+                physicsSolver.SolveDiceAndDice(self.m_dices[i], self.m_dices[j], 0.06)
+                physicsSolver.SolveDiceAndDice(self.m_dices[j], self.m_dices[i], 0.06)
+        # Draw shadow
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.m_framebuffer)
+        GL.glUseProgram(self.m_shadowShader)
+        GL.glDisable(GL.GL_BLEND)
+        GL.glViewport(0,0,shadow.SHADOW_MAP_SIZE,shadow.SHADOW_MAP_SIZE)
+        for i in range(self.m_depthTextures.size):
+            shadow.SetupShadow(self.m_depthTextures[i], self.m_shadowMapTextures[i], shaderProgram.lights[i])
+            for j in range(self.m_diceCnt):
+                self.m_dices[j].Draw()
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+        GL.glEnable(GL.GL_BLEND)
+        GL.glViewport(0,0,800,600)
+        viewMatrix = self.m_camera.GetViewMatrix()
+        # Draw Dice
+        self.target=0
+        GL.glUseProgram(self.m_diceShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        for i in range(self.m_diceCnt):
+            self.m_dices[i].Draw()
+        # Draw Plane
+        GL.glUseProgram(self.m_planeShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)#plane
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+        # Draw Skybox
+        GL.glUseProgram(self.m_skyboxShader)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 36)
+        # Draw Text
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glUseProgram(self.m_alphabatShader)
+        ss = 4 + 0.5 * np.sin(time.time() * 2)
+        self.PrintText("Dice Math !", -ss/11 - 0.25 , 0.8, ss, (1,1,0))
+        self.PrintText("[Space] to roll dices!",-0.5,-0.4,1.5)
+        self.PrintText("[H] to see the rule!",-0.45,-0.5,1.5)
+        self.PrintText("[Enter] to start!",-0.4,-0.6,1.5)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+        GLUT.glutSwapBuffers()
+
+    def DrawGame(self):
         self.ch()
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         for i in range(self.m_diceCnt):
@@ -111,12 +172,14 @@ class Wnd:
         # Draw shadow
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.m_framebuffer)
         GL.glUseProgram(self.m_shadowShader)
+        GL.glDisable(GL.GL_BLEND)
         GL.glViewport(0,0,shadow.SHADOW_MAP_SIZE,shadow.SHADOW_MAP_SIZE)
         for i in range(self.m_depthTextures.size):
             shadow.SetupShadow(self.m_depthTextures[i], self.m_shadowMapTextures[i], shaderProgram.lights[i])
             for j in range(self.m_diceCnt):
                 self.m_dices[j].Draw()
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+        GL.glEnable(GL.GL_BLEND)
         
         GL.glViewport(0,0,800,600)
         viewMatrix = self.m_camera.GetViewMatrix()
@@ -146,12 +209,20 @@ class Wnd:
         self.PrintText(f"Enter the sum :{sum}",-1,-1+0.1,1.0)
         self.PrintText(f"{max(30-max(int(time.time())-int(self.begin_time),0),0)}",-0.1,1.0,2.0)
         self.PrintText(f"Score:{self.score}",0.3,1.0,2.0)
-        GL.glEnable(GL.GL_DEPTH_TEST)   
+        GL.glEnable(GL.GL_DEPTH_TEST)
         GLUT.glutSwapBuffers()
         
+    def __DisplayFunc(self):
+        self.__CurrentScene()
 
-        
-    def __KeyboardFunc(self, c, x, y):
+    def MenuKeyboard(self, c):
+        if c == b' ':
+            self.RandomizeDices()
+        elif c == b'\r':
+            self.__CurrentScene = self.DrawGame
+            self.__CurrentKeyboard = self.GameKeyboard
+    
+    def GameKeyboard(self, c):
         #print(c)
         if c == b'a':
             right = self.m_camera.GetRightward()
@@ -180,7 +251,8 @@ class Wnd:
         elif c == b'p':
             self.RandomizeDices()
         elif c == b'm':
-            self.m_dices[0].m_pos[2]+=0.1
+            #self.m_dices[0].m_pos[2]+=0.1
+            self.m_dices[0].m_rot = quaternion.from_euler_angles(0,0.1,0) * self.m_dices[0].m_rot
         elif c == b'n':
             self.m_dices[0].m_pos[2]-=0.1
         elif c == b'b':
@@ -214,7 +286,14 @@ class Wnd:
                 self.score-=1
 
             self.RandomizeDices()
+        elif c == b'g':
+            acc = 0
+            for i in range(self.m_diceCnt):
+                acc += self.m_dices[i].GetPoint()
+            print(acc)
 
+    def __KeyboardFunc(self, c, x, y):
+        self.__CurrentKeyboard(c)
 
 
 
