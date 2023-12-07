@@ -552,50 +552,6 @@ class Wnd:
         print("Do nothing.")
     
     def GameKeyboard(self, c):
-        if c == b'a':
-            right = self.m_camera.GetRightward()
-            self.m_camera.m_pos -= 0.1 * right
-        elif c == b'd':
-            right = self.m_camera.GetRightward()
-            self.m_camera.m_pos += 0.1 * right
-        elif c == b'w':
-            forward = self.m_camera.GetForward()
-            self.m_camera.m_pos += 0.1 * forward
-        elif c == b's':
-            forward = self.m_camera.GetForward()
-            self.m_camera.m_pos -= 0.1 * forward
-        elif c == b'k':
-            self.m_camera.m_pitch += 0.1
-        elif c == b'j':
-            self.m_camera.m_pitch -= 0.1
-        elif c == b'h':
-            self.m_camera.m_yaw -= 0.1
-        elif c == b'l':
-            self.m_camera.m_yaw += 0.1
-        elif c == b'e':
-            self.m_camera.m_pos[1] += 0.1
-        elif c == b'q':
-            self.m_camera.m_pos[1] -= 0.1
-        elif c == b'p':
-            self.RandomizeDices()
-        elif c == b'm':
-            self.m_dices[0].m_rot = quaternion.from_euler_angles(0,0.1,0) * self.m_dices[0].m_rot
-        elif c == b'n':
-            self.m_dices[0].m_pos[2]-=0.1
-        elif c == b'b':
-            self.m_dices[1].m_pos=np.array((0.0,1.0,0.0))
-        elif c == b'i': #取得當前camera資訊
-            print(self.m_camera.m_pos)
-            print(self.m_camera.m_pitch)
-            print(self.m_camera.m_yaw)
-        elif c == b'r':
-            self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
-            self.m_camera.m_pitch=-1.6000000000000003
-            self.m_camera.m_yaw=-1.4707963267948965
-        elif c == b'c':# 側邊
-            self.m_camera.m_pos=np.array((9.66514424,3.33536864,1.41968903))
-            self.m_camera.m_pitch=-2.7755575615628914e-17
-            self.m_camera.m_yaw=-3.070796326794898
         if c == b'\x08':#backspace
             if(len(self.now_sum)!=0):
                 self.now_sum.pop()
@@ -625,26 +581,5 @@ class Wnd:
             self.m_camera.m_pitch=-2.7755575615628914e-17
             self.m_camera.m_yaw=-3.070796326794898
             self.RandomizeDices()
-        elif c == b'g':
-            acc = 0
-            for i in range(self.m_diceCnt):
-                acc += self.m_dices[i].GetPoint()
-            print(acc)
-
     def __KeyboardFunc(self, c, x, y):
         self.__CurrentKeyboard(c)
-
-
-
-
-'''
-正上方camera資訊
-m_pos->[ 0.60108362 12.07439748 -0.36730854]
-m_pitch-1.6000000000000003
-m_yaw-1.4707963267948965
-
-旁邊camera資訊
-m_pos->[ 2.67276163  3.51072055 -8.99496325]
-m_pitch->-3.1000000000000014
-m_yaw->-1.4707963267948965
-'''
