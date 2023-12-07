@@ -29,9 +29,7 @@ class Dice:
 
     def GetPoint(self):
         w,x,y,z = quaternion.as_float_array(self.m_rot)
-        a = (1.4142135623730950488016887242097 * w) / (2.0 * (w * w + y * y))
-        if 1-a*a<0:
-            return 5
+        a = np.clip((1.4142135623730950488016887242097 * w) / (2.0 * (w * w + y * y)), -1, 1)
         b = np.sqrt(1 - a * a)
         if np.abs(a*w-b*y - 0.70710678118654752440084436210485) > 1e-2:
             if np.abs(a*w+b*y - 0.70710678118654752440084436210485) < 1e-2:
