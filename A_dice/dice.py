@@ -35,7 +35,10 @@ class Dice:
             if np.abs(a*w+b*y - 0.70710678118654752440084436210485) < 1e-2:
                 b = -b
             else:
-                return 6
+                if np.abs(w)<1e-2 and np.abs(a)>0.9:
+                    return 5
+                else :
+                    return 6
         rot = np.quaternion(a, 0, b, 0) * self.m_rot
         w,x,y,z = quaternion.as_float_array(rot)
         if x > 0.5:

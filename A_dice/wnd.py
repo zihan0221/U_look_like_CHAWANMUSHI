@@ -43,13 +43,14 @@ class Wnd:
         self.m_diceShader = shaderProgram.CreateDiceShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.m_alphabatShader = shaderProgram.CreateAlphabat()
+        self.m_ACShader = shaderProgram.CreateACShader()
+        self.m_WAShader = shaderProgram.CreateWAShader()
         self.m_planeShader = shaderProgram.CreatePlaneShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.m_depthTextures = shadow.CreateDepthTexture(len(shaderProgram.lights))
         self.m_shadowMapTextures = shadow.CreateShadowMapTexture(len(shaderProgram.lights))
         self.m_framebuffer = GL.glGenFramebuffers(1)
         self.m_shadowShader = shaderProgram.CreateShadowShader()
-
         self.m_skyboxShader = shaderProgram.CreateSkyboxShader()
         GL.glUniformMatrix4fv(2, 1, GL.GL_TRUE, self.m_camera.GetProjectionMatrix())
         self.timer = 0
@@ -61,6 +62,17 @@ class Wnd:
             GL.glUniform3fv(5,1,color)
             GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
             xx+=0.03*(size)
+
+    def PrintAC(self,xx=0,yy=0,size=1):
+        GL.glUniform2f(3,xx,yy)
+        GL.glUniform1f(4,size)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+    
+    def PrintWA(self,xx=0,yy=0,size=1):
+        GL.glUniform2f(3,xx,yy)
+        GL.glUniform1f(4,size)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+
     def RandomizeDices(self):
         self.m_diceCnt=randint(1,6)
         for i in range(self.m_diceCnt):
@@ -80,7 +92,6 @@ class Wnd:
                     if col:
                         flag = True
                         break
-
 
     def __CreateObject(self):
         self.m_dices = [dice.Dice() for _ in range(6)]
@@ -196,6 +207,81 @@ class Wnd:
         self.PrintText(f"Score:{self.score}",0.3,1.0,2.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GLUT.glutSwapBuffers()
+        if max(30-max(int(time.time())-int(self.begin_time),0),-1)==-1:
+            self.__CurrentScene = self.EndGame
+            self.__CurrentKeyboard = self.EndGameKeyboard
+            self.m_camera.m_pos=np.array((0.60108362,12.07439748,-0.36730854))
+            self.m_camera.m_pitch=-1.6000000000000003
+            self.m_camera.m_yaw=-1.4707963267948965
+
+    def EndGame(self):
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+        for i in range(self.m_diceCnt):
+            physicsSolver.SolveDiceAndPlane(self.m_dices[i], 0.06)
+        for i in range(self.m_diceCnt):
+            for j in range(i + 1, self.m_diceCnt):
+                physicsSolver.SolveDiceAndDice(self.m_dices[i], self.m_dices[j], 0.06)
+                physicsSolver.SolveDiceAndDice(self.m_dices[j], self.m_dices[i], 0.06)
+        # Draw shadow
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.m_framebuffer)
+        GL.glUseProgram(self.m_shadowShader)
+        GL.glDisable(GL.GL_BLEND)
+        GL.glViewport(0,0,shadow.SHADOW_MAP_SIZE,shadow.SHADOW_MAP_SIZE)
+        for i in range(self.m_depthTextures.size):
+            shadow.SetupShadow(self.m_depthTextures[i], self.m_shadowMapTextures[i], shaderProgram.lights[i])
+            for j in range(self.m_diceCnt):
+                self.m_dices[j].Draw()
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+        GL.glEnable(GL.GL_BLEND)
+        
+        GL.glViewport(0,0,800,600)
+        viewMatrix = self.m_camera.GetViewMatrix()
+        # Draw Dice
+        self.target=0
+        GL.glUseProgram(self.m_diceShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        for i in range(self.m_diceCnt):
+            self.m_dices[i].Draw()
+        # Draw Plane
+        GL.glUseProgram(self.m_planeShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)#plane
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+        # Draw Skybox
+        GL.glUseProgram(self.m_skyboxShader)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        # Draw Text
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 36)
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glUseProgram(self.m_alphabatShader)
+        self.PrintText(f"Your score:{self.score}",-0.8,0.5,4.2)
+        self.PrintText("[M] to go back to menu!",-0.5,-0.4,1.5)
+        self.PrintText("[R] to replay!",-0.45,-0.5,1.5)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+        GLUT.glutSwapBuffers()
+
+    def EndGameKeyboard(self, c):
+        if c==b'r':
+            self.score=0
+            self.begin_time=time.time()
+            self.__CurrentScene=self.DrawLoadGame
+            self.__CurrentKeyboard=self.DoNothingKeyboard
+            self.m_camera.m_pos=np.array((9.66514424,3.33536864,1.41968903))
+            self.m_camera.m_pitch=-2.7755575615628914e-17
+            self.m_camera.m_yaw=-3.070796326794898
+            self.RandomizeDices()
+        elif c==b'm':
+            self.score=0
+            self.begin_time=time.time()
+            self.__CurrentScene=self.DrawMenu
+            self.__CurrentKeyboard=self.MenuKeyboard
+            self.m_camera.m_pos=np.array((9.66514424,3.33536864,1.41968903))
+            self.m_camera.m_pitch=-2.7755575615628914e-17
+            self.m_camera.m_yaw=-3.070796326794898
+            self.RandomizeDices()
     
     def DrawRule(self):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
@@ -362,8 +448,13 @@ class Wnd:
         sum=str(b''.join(self.now_sum),'utf-8')
         self.PrintText(f"Enter the sum :{sum}",-1,-1+0.1,1.0)
         self.PrintText(f"{max(30-max(int(time.time())-int(self.begin_time),0),0)}",-0.1,1.0,2.0)
-        self.PrintText("Correct:D",-0.7,0.3,5.0,(0,256,0))
+        self.PrintText("Correct:D",-0.7,0.5,5.0,(0,256,0))
         self.PrintText(f"Score:{self.score}",0.3,1.0,2.0)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+        #Draw AC.png
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glUseProgram(self.m_ACShader)
+        self.PrintAC(-0.4,0.2,15.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GLUT.glutSwapBuffers()
         if max(2-max(int(time.time())-int(self.pre_time),0),0)==0:
@@ -419,8 +510,13 @@ class Wnd:
         sum=str(b''.join(self.now_sum),'utf-8')
         self.PrintText(f"Enter the sum :{sum}",-1,-1+0.1,1.0)
         self.PrintText(f"{max(30-max(int(time.time())-int(self.begin_time),0),0)}",-0.1,1.0,2.0)
-        self.PrintText("Incorrect:(",-0.8,0.3,5.0,(256,0,0))
+        self.PrintText("Incorrect:(",-0.8,0.5,5.0,(256,0,0))
         self.PrintText(f"Score:{self.score}",0.3,1.0,2.0)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+        #Draw WA.png
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glUseProgram(self.m_WAShader)
+        self.PrintWA(-0.4,0.2,15.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GLUT.glutSwapBuffers()
         if max(2-max(int(time.time())-int(self.pre_time),0),0)==0:

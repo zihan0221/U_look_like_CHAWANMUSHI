@@ -40,6 +40,30 @@ def LoadSkyboxTexture():
     GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8,len(img[0]),len(img),0,GL.GL_RGBA, GL.GL_FLOAT,img)
     GL.glUniform1i(0, 2)
 
+def LoadACTexture():
+    img = plt.imread("ac.png")
+    tex = GL.glGenTextures(1)
+    GL.glActiveTexture(GL.GL_TEXTURE3)
+    GL.glBindTexture(GL.GL_TEXTURE_2D, tex)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+    GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8,len(img[0]),len(img),0,GL.GL_RGBA, GL.GL_FLOAT,img)
+    GL.glUniform1i(0, 3)
+
+def LoadWATexture():
+    img = plt.imread("wa.png")
+    tex = GL.glGenTextures(1)
+    GL.glActiveTexture(GL.GL_TEXTURE4)
+    GL.glBindTexture(GL.GL_TEXTURE_2D, tex)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+    GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8,len(img[0]),len(img),0,GL.GL_RGBA, GL.GL_FLOAT,img)
+    GL.glUniform1i(0, 4)
+
 def CreateShader(vertShaderSrc, fragShaderSrc, geomShaderSrc=None):
     programId = GL.glCreateProgram()
     vertShader = GL.glCreateShader(GL.GL_VERTEX_SHADER)
@@ -140,7 +164,7 @@ def CreateDiceShader():
     }
 
     float Specular(in vec3 V, in vec3 N, in vec3 L){
-        const float roughness = 0.3;
+        const float roughness = 0.7;
         const float a = roughness * roughness;
         const float a2 = a * a;
         const vec3 H = normalize(V + L);
@@ -204,7 +228,7 @@ def CreatePlaneShader():
     """ + LIGHT_CONFIG + """
     float FresnelTerm(in vec3 N, in vec3 L) { const float n1 = 1; const float n2 = 1.5; const float inCos = max(dot(L, N), 0.0f); float n2n1 = n2 / n1; const float d = inCos * inCos - 1 + n2n1 * n2n1; if (d > 1e-5) { const float outCos = sqrt(d) / n2n1; float Rpara = (n1 * inCos - n2 * outCos) / (n1 * inCos + n2 * outCos); Rpara *= Rpara; float Rperp = (n2 * inCos - n1 * outCos) / (n2 * inCos + n1 * outCos); Rperp *= Rperp; return (Rpara + Rperp) * 0.5f; } return 1; }
 
-    float Specular(in vec3 V, in vec3 N, in vec3 L){ const float roughness = 0.6; const float a = roughness * roughness; const float a2 = a * a; const vec3 H = normalize(V + L); const float k = a / 2; const float NH = dot(N, H); const float NL = dot(N, L); const float NV = dot(N, V); const float term1 = NH * NH * (a2 - 1) + 1; const float term2 = NL * (1 - k) + k; const float term3 = NV * (1 - k) + k; return a2 * (1.0f / (4.0 * M_PI)) / (term1 * term1 * term2 * term3); }
+    float Specular(in vec3 V, in vec3 N, in vec3 L){ const float roughness = 0.9; const float a = roughness * roughness; const float a2 = a * a; const vec3 H = normalize(V + L); const float k = a / 2; const float NH = dot(N, H); const float NL = dot(N, L); const float NV = dot(N, V); const float term1 = NH * NH * (a2 - 1) + 1; const float term2 = NL * (1 - k) + k; const float term3 = NV * (1 - k) + k; return a2 * (1.0f / (4.0 * M_PI)) / (term1 * term1 * term2 * term3); }
     in vec3 fragPos;
     out vec4 color;
     void main(){
@@ -231,7 +255,6 @@ def CreatePlaneShader():
     """
     pid = CreateShader(vertShaderSrc, fragShaderSrc)
     return pid
-
 
 def CreateShadowShader():
     vertShaderSrc = """
@@ -387,3 +410,90 @@ def CreateSkyboxShader():
     LoadSkyboxTexture()
     return pid
     
+def CreateACShader():
+    #to do
+    vertShaderSrc = """
+    #version 450 core
+    layout(location=3) uniform vec2 posi;
+    layout(location=4) uniform float size;
+
+    out vec2 pos;
+    void main(){
+        float i,j,dd,dy,Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+        vec2 texp[]={// 0~1 0~1
+            vec2(0.0, 0.0), vec2(0.0, 1.0), vec2(1.0,1.0),
+            vec2(1.0,1.0), vec2(1.0,0.0), vec2(0.0,0.0)
+        };
+        dd=0.05*size;
+        dy=0.07*size;
+        float xx=posi.x;
+        float yy=posi.y;
+        Ax=xx,Ay=yy;
+        Bx=xx+dd,By=yy;
+        Cx=xx,Cy=(yy-dy);
+        Dx=xx+dd,Dy=yy-dy;
+        vec2 p[]={ //畫面上-1~1 -1~1
+            vec2(Ax, Ay), vec2(Cx, Cy), vec2(Dx,Dy),
+            vec2(Dx,Dy), vec2(Bx,By), vec2(Ax,Ay)
+        };
+        gl_Position = vec4(p[gl_VertexID], 0 , 1 );
+        pos=texp[gl_VertexID];
+    }
+    """
+    fragShaderSrc = """
+    #version 450 core
+    layout(location=0) uniform sampler2D texSampler;
+    in vec2 pos;
+    out vec4 color;
+    void main(){
+        vec3 c = texture(texSampler,pos).xyz;
+        color = vec4(c,1);
+    }
+    """
+    pid = CreateShader(vertShaderSrc, fragShaderSrc)
+    LoadACTexture()
+    return pid
+
+def CreateWAShader():
+    #to do
+    vertShaderSrc = """
+    #version 450 core
+    layout(location=3) uniform vec2 posi;
+    layout(location=4) uniform float size;
+
+    out vec2 pos;
+    void main(){
+        float i,j,dd,dy,Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+        vec2 texp[]={//ascii上 0~1 0~1
+            vec2(0.0, 0.0), vec2(0.0, 1.0), vec2(1.0,1.0),
+            vec2(1.0,1.0), vec2(1.0,0.0), vec2(0.0,0.0)
+        };
+        dd=0.05*size;
+        dy=0.07*size;
+        float xx=posi.x;
+        float yy=posi.y;
+        Ax=xx,Ay=yy;
+        Bx=xx+dd,By=yy;
+        Cx=xx,Cy=(yy-dy);
+        Dx=xx+dd,Dy=yy-dy;
+        vec2 p[]={ //畫面上-1~1 -1~1
+            vec2(Ax, Ay), vec2(Cx, Cy), vec2(Dx,Dy),
+            vec2(Dx,Dy), vec2(Bx,By), vec2(Ax,Ay)
+        };
+        gl_Position = vec4(p[gl_VertexID], 0 , 1 );
+        pos=texp[gl_VertexID];
+    }
+    """
+    fragShaderSrc = """
+    #version 450 core
+    layout(location=0) uniform sampler2D texSampler;
+    in vec2 pos;
+    out vec4 color;
+    void main(){
+        vec3 c = texture(texSampler,pos).xyz;
+        color = vec4(c,1);
+    }
+    """
+    pid = CreateShader(vertShaderSrc, fragShaderSrc)
+    LoadWATexture()
+    return pid

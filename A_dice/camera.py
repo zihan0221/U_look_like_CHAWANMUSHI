@@ -10,7 +10,7 @@ class Camera:
         self.m_pos = np.array([0.0, 0.0, 0.0])
         self.m_pitch = 0.0
         self.m_yaw = -np.pi/2
-        self.m_fov = 90.0
+        self.m_fov = 150.0
 
     def GetForward(self):
         return np.array([
