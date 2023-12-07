@@ -549,7 +549,7 @@ class Wnd:
             self.__CurrentKeyboard=self.MenuKeyboard
 
     def DoNothingKeyboard(self,c):
-        print("Do nothing.")
+        pass
     
     def GameKeyboard(self, c):
         if c == b'\x08':#backspace
