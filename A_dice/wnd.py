@@ -23,7 +23,6 @@ class Wnd:
         self.now_sum=[]
         self.score=0
         self.st=1e16
-        self.begin_time=time.time()
         GLUT.glutInit()
         GLUT.glutInitDisplayMode(
             GLUT.GLUT_DOUBLE | GLUT.GLUT_RGBA | GLUT.GLUT_DEPTH)
@@ -94,6 +93,7 @@ class Wnd:
                     if col:
                         flag = True
                         break
+
 
     def __CreateObject(self):
         self.m_dices = [dice.Dice() for _ in range(6)]
@@ -200,9 +200,8 @@ class Wnd:
         # Draw Skybox
         GL.glUseProgram(self.m_skyboxShader)
         GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        # Draw Text
         GL.glDrawArrays(GL.GL_TRIANGLES, 0, 36)
-
-        # test ->draw something on screen
         GL.glDisable(GL.GL_DEPTH_TEST)
         GL.glUseProgram(self.m_alphabatShader)
         sum=str(b''.join(self.now_sum),'utf-8')
@@ -211,7 +210,65 @@ class Wnd:
         self.PrintText(f"Score:{self.score}",0.3,1.0,2.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GLUT.glutSwapBuffers()
-        
+    
+    def DrawRule(self):
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+        theta = time.time() * 0.2
+        c = np.cos(theta)
+        s = np.sin(theta)
+        self.m_camera.m_pos[0] = 8 * c
+        self.m_camera.m_pos[2] = 8 * s
+        self.m_camera.m_yaw = theta + 3.1415926
+        for i in range(self.m_diceCnt):
+            physicsSolver.SolveDiceAndPlane(self.m_dices[i], 0.06)
+        for i in range(self.m_diceCnt):
+            for j in range(i + 1, self.m_diceCnt):
+                physicsSolver.SolveDiceAndDice(self.m_dices[i], self.m_dices[j], 0.06)
+                physicsSolver.SolveDiceAndDice(self.m_dices[j], self.m_dices[i], 0.06)
+        # Draw shadow
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.m_framebuffer)
+        GL.glUseProgram(self.m_shadowShader)
+        GL.glDisable(GL.GL_BLEND)
+        GL.glViewport(0,0,shadow.SHADOW_MAP_SIZE,shadow.SHADOW_MAP_SIZE)
+        for i in range(self.m_depthTextures.size):
+            shadow.SetupShadow(self.m_depthTextures[i], self.m_shadowMapTextures[i], shaderProgram.lights[i])
+            for j in range(self.m_diceCnt):
+                self.m_dices[j].Draw()
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+        GL.glEnable(GL.GL_BLEND)
+        GL.glViewport(0,0,800,600)
+        viewMatrix = self.m_camera.GetViewMatrix()
+        # Draw Dice
+        self.target=0
+        GL.glUseProgram(self.m_diceShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        for i in range(self.m_diceCnt):
+            self.m_dices[i].Draw()
+        # Draw Plane
+        GL.glUseProgram(self.m_planeShader)
+        shadow.BindShadowMapTexture(self.m_shadowMapTextures)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)#plane
+        GL.glUniform3fv(4, 1, self.m_camera.m_pos)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6)
+        # Draw Skybox
+        GL.glUseProgram(self.m_skyboxShader)
+        GL.glUniformMatrix4fv(1, 1, GL.GL_TRUE, viewMatrix)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 36)
+        # Draw Text
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glUseProgram(self.m_alphabatShader)
+        ss = 4 + 0.5 * np.sin(time.time() * 2)
+        self.PrintText("Dice Math !", -ss/11 - 0.25 , 0.8, ss, (1,1,0))
+        self.PrintText("Add up the sides of all the dice displayed on the screen.",-0.95,-0.05,1.1)
+        self.PrintText("You have 30 seconds to answer as many as possible.",-0.85,-0.2,1.1)
+        self.PrintText("You get 4 points for each correct answer.",-0.7,-0.35,1.1)
+        self.PrintText("You lose 1 point for each incorrect answer.",-0.73,-0.5,1.1)
+        self.PrintText("[H] return menu!",-0.3,-0.65,1.1)
+        GL.glEnable(GL.GL_DEPTH_TEST)
+        GLUT.glutSwapBuffers()
+
     def __DisplayFunc(self):
         self.__CurrentScene()
 
@@ -219,8 +276,20 @@ class Wnd:
         if c == b' ':
             self.RandomizeDices()
         elif c == b'\r':
+            self.begin_time=time.time()
             self.__CurrentScene = self.DrawGame
             self.__CurrentKeyboard = self.GameKeyboard
+        elif c == b'h':
+            self.__CurrentScene=self.DrawRule
+            self.__CurrentKeyboard=self.RuleKeyboard
+    
+    def RuleKeyboard(self, c):
+        if c==b'h':
+            self.begin_time=time.time()
+            self.__CurrentScene=self.DrawMenu
+            self.__CurrentKeyboard=self.MenuKeyboard
+
+
     
     def GameKeyboard(self, c):
         #print(c)
@@ -251,7 +320,6 @@ class Wnd:
         elif c == b'p':
             self.RandomizeDices()
         elif c == b'm':
-            #self.m_dices[0].m_pos[2]+=0.1
             self.m_dices[0].m_rot = quaternion.from_euler_angles(0,0.1,0) * self.m_dices[0].m_rot
         elif c == b'n':
             self.m_dices[0].m_pos[2]-=0.1
@@ -275,16 +343,17 @@ class Wnd:
         elif c >= b'0' and c <= b'9':
             self.now_sum.append(c)
         elif c == b'\r':#enter
+            self.target=0
+            for i in range(self.m_diceCnt):
+                self.target += self.m_dices[i].GetPoint()
             sum=0
             for i in self.now_sum:
                 sum=sum*10+int(i)-int(b'0')
             self.now_sum=[]
             if sum==self.target:
                 self.score+=4
-                
             else : 
                 self.score-=1
-
             self.RandomizeDices()
         elif c == b'g':
             acc = 0
@@ -308,5 +377,4 @@ m_yaw-1.4707963267948965
 m_pos->[ 2.67276163  3.51072055 -8.99496325]
 m_pitch->-3.1000000000000014
 m_yaw->-1.4707963267948965
-A_dice/camera.py A_dice/dice.png A_dice/dice.py A_dice/physicsSolver.py A_dice/shaderProgram.py
 '''
