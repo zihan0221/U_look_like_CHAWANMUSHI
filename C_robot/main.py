@@ -1,187 +1,186 @@
-import random
+from sprites import *
+from config import *
+from spawn import game_map
 import sys
+import pygame
 
-#initialize the global variable
-PathwayChar = ' '
-WallTexture = ':'
-PlayerChar = '@'
-DeadRobotChar = 'X'
-RobotChar = 'R'
+class Game:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+        self.clock = pygame.time.Clock()
+        self.font = pygame.font.Font('zpix.ttf', 32)
+        self.running = True
 
-DeadRobot = 2
-Total_Robots = 10
-Total_Walls = 100
-MapWidth = 40
-MapHeight = 20
-TeleportDevices = 2
+        self.character_spritesheet = Spritesheet('img/sprite.png')
+        self.terrain_spritesheet = Spritesheet('img/sprite.png')
+        self.game_background = pygame.image.load('img/background.png')
+        self.robot = []
+        self.teleport = TELEPORT_DEVICES
+        self.game_result = 0
 
-
-def main():
-    print('HUNGRY ROBOTS!')
-    print('--snip--')
-    game_map = generate_map() # call the map generator function
-    robot_coordinates = insertRobot(game_map) # call the robot inserter function
-    playerLocation = randomXY(game_map, robot_coordinates) # randomize the player starting location
-
-    # stay on a loop until player is killed or all robots are destroyed
-    while 1:
-        display_map(game_map, robot_coordinates, playerLocation) # print the generated map
-        playerLocation = key_movement(game_map, robot_coordinates, playerLocation) # ask for player moves
-        
-        # add a move robot function here (change as much as you like)
-        
-        # if player wins and all robots destroyed (change as much as you like)
-        if not robot_coordinates:
-          print('All the robots have crashed into each other and you lived to tell the tale! Good job!')
-          sys.exit()
-
-        # if a robot caught the player (change as much as you like)
-        for x, y in robot_coordinates:
-            if(x,y) == playerLocation:
-                print('You have been caught by a robot!')
-                sys.exit()
+    def createTilemap(self):
+        for i, row in enumerate(game_map):
+            for j, column in enumerate(row):
+                Ground(self, j, i)
+                if column == 'B':
+                    Block(self, j, i)
+                if column == 'P':
+                    self.player = Player(self, j, i)
+                if column == 'R':
+                    self.robot.append(Robot(self, j, i))
 
 
-# function to move the player location
-def key_movement(game_map, robot_coordinates, playerLocation):
-    player_x, player_y = playerLocation
-    global TeleportDevices
 
-    # This is list of the movement keys
-    # Q = go up left diagonally
-    # W = go up
-    # E = go up right diagonally
-    # D = go right
-    # C = go down right diagonally
-    # X = go down
-    # Z = go down left diagonally
-    # A = go left
-    # S = stop or no move
-    movements = {
-        'Q': (-1, -1), 'W': (0, -1), 'E': (1, -1),
-        'D': (1, 0), 'C': (1, 1), 'X': (0, 1),
-        'Z': (-1, 1), 'A': (-1, 0), 'S': (0, 0)
-    }
+    def new(self):
+        # a new game starts
+        self.playing = True
 
-    while True:
-        print('(T)teleports remaining:{}'.format(TeleportDevices))
-        print('                    (Q) (W) (E)')
-        print('                    (A) (S) (D)')
-        print('Enter move or Quit: (Z) (X) (C)')
-        print('--snip--')
-        key_input = input(' ').upper()
+        self.all_sprites = pygame.sprite.LayeredUpdates()
+        self.blocks = pygame.sprite.LayeredUpdates()
+        self.enemies = pygame.sprite.LayeredUpdates()
+        self.attacks = pygame.sprite.LayeredUpdates()
 
-        # if player inputs a teleport key
-        if key_input == 'T':
-            if TeleportDevices > 0:
-                TeleportDevices -= 1
-                print("Teleport succeeded")
-                print('--snip--')
-                return randomXY(game_map, robot_coordinates)
-            else:
-                print('Your teleportation device is out of energy')
-                print('--snip--')
-                return playerLocation
-
-        # if player wants to quit
-        elif key_input == 'QUIT':
-            print('Thanks for playing!')
-            sys.exit()
-        
-        # make sure that the input key is valid
-        elif key_input in movements:
-            move = movements[key_input]
-            new_x, new_y = player_x + move[0], player_y + move[1]
-
-            # if the input is valid, make sure the input key movement is not block by any other object
-            if no_object(new_x, new_y, game_map, robot_coordinates):
-                return new_x, new_y
-            else:
-                print("Move blocked by another object. Try another direction.")
-                print('--snip--')
-
-        # If the input key is invalid, it will keep on looping until the valid key is inputted
-        else:
-            print("Invalid input, please try another key")
-            print('--snip--')
+        self.createTilemap()
 
 
-# function to find a random empty space
-def randomXY(game_map, robotLocation_list):
-    while 1:
-        randomX = random.randint(1, MapWidth - 2) 
-        randomY = random.randint(1, MapHeight - 2)
-        if no_object(randomX, randomY, game_map, robotLocation_list):
-            break
-
-    return (randomX, randomY)
+    def events(self):
+        # game loop events
+        for event in pygame.event.get():
+            self.update(event)
+            if event.type == pygame.QUIT:
+                self.playing = False
+                self.running = False
 
 
-# function to make sure that the current XY value in the random space is really empty
-def no_object(randomX, randomY, game_map, robotLocation_list):
-    is_pathway = game_map[randomY][randomX] == PathwayChar # is an empty space and not a wall
-    not_in_robots = (randomX, randomY) not in robotLocation_list # doesn't blocked by robot
-    return is_pathway and not_in_robots
+
+    def update(self, event):
+        # game loop updates
+        self.all_sprites.update(event)
+        if self.game_result != 0:
+            self.playing = False
 
 
-# function to generate the game map
-def generate_map():
-    maze = [] # the generated objects will be stored in this list
+    def draw(self):
+        # game loop draw
+        self.screen.fill(BLACK)
+        self.all_sprites.draw(self.screen)
 
-    # Insert empty space for pathway
-    for _ in range(MapHeight):
-        empty = [PathwayChar] * MapWidth
-        maze.append(empty)
+        self.font2 = pygame.font.Font('zpix.ttf', 18)
 
-    # Add border walls
-    for x in range(MapWidth):
-        maze[0][x] = WallTexture # top border wall
-        maze[MapHeight - 1][x] = WallTexture # bottom border wall
-    for y in range(MapHeight):
-        maze[y][0] = WallTexture # left border wall
-        maze[y][MapWidth-1] = WallTexture # right border wall
+        newscreen = self.font2.render('teleports remaining: '+str(self.teleport), True, WHITE)
+        newscreen_rect = newscreen.get_rect(x=WIN_WIDTH-390, y=10)
+        self.screen.blit(newscreen, newscreen_rect)
 
-    # Insert random walls in the map
-    for _ in range(Total_Walls):
-        x, y = randomXY(maze,[])
-        maze[y][x] = WallTexture
+        newscreen = self.font2.render('Enter move or Close the window:', True, WHITE)
+        newscreen_rect = newscreen.get_rect(x=WIN_WIDTH-390, y=34)
+        self.screen.blit(newscreen, newscreen_rect)
 
-    # insert dead robot in the map
-    for _ in range(DeadRobot):
-        x, y = randomXY(maze,[])
-        maze[y][x] = DeadRobotChar
+        newscreen = self.font2.render('(Q)(W)(E)', True, WHITE)
+        newscreen_rect = newscreen.get_rect(x=WIN_WIDTH-390, y=56)
+        self.screen.blit(newscreen, newscreen_rect)
 
-    return maze
+        newscreen = self.font2.render('(A)(S)(D)', True, WHITE)
+        newscreen_rect = newscreen.get_rect(x=WIN_WIDTH-390, y=78)
+        self.screen.blit(newscreen, newscreen_rect)
+
+        newscreen = self.font2.render('(Z)(X)(C)', True, WHITE)
+        newscreen_rect = newscreen.get_rect(x=WIN_WIDTH-390, y=100)
+        self.screen.blit(newscreen, newscreen_rect)
 
 
-# function to print out the generated map
-def display_map(game_map, robot_coordinates, playerLocation):
-    for y, row in enumerate(game_map):
-        for x, char in enumerate(row):
-            if (x, y) == playerLocation:
-                print(PlayerChar, end='') # print the player location
-            elif (x, y) in robot_coordinates:
-                print(RobotChar, end='') # print the robot location
-            else:
-                print(char, end='') # print the other objects such as wall or empty space
-        print() # print a new line for printing the new row
+        self.clock.tick(FPS)
+        pygame.display.update()
 
 
-# function to insert the enemy robots in random empty space
-def insertRobot(game_map):
-    robotLocation_list = [] # the generated robot coordinates will be stored in this list
-    for i in range(Total_Robots):
-        x, y = randomXY(game_map, robotLocation_list)
-        robotLocation_list.append((x, y)) # append every new XY coordinate is generated
-
-    return robotLocation_list
-
-
-# function to move the robot
-def robot_movement():
-    # insert the robot movement function here (change as much as you like)
-    robotMove = []
+    def main(self):
+        # game loop
+        while self.playing:
+            self.events()
+            self.draw()
+            self.screen.blit(self.game_background, (0, 0))
+        self.running = False
 
 
-if __name__ == "__main__":
-    main()
+
+    def game_over(self):
+        g.end_screen()
+        g.thank_screen()
+        pass
+
+
+    def intro_screen(self):
+        intro = True
+
+        title = self.font.render('Maze game', True, BLACK)
+        title_rect = title.get_rect(x=WIN_WIDTH//2-100, y=WIN_HEIGHT//2-100)
+
+        play_button = Button(WIN_WIDTH//2-70, WIN_HEIGHT//2-30, 100, 50, WHITE, BLACK, 'Play', 32)
+
+        while intro:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    intro = False
+                    self.running = False
+
+            mouse_pos = pygame.mouse.get_pos()
+            mouse_pressed = pygame.mouse.get_pressed()
+
+            if play_button.is_pressed(mouse_pos, mouse_pressed):
+                intro = False
+
+            self.screen.fill((178, 236, 237))
+            self.screen.blit(title, title_rect)
+            self.screen.blit(play_button.image, play_button.rect)
+            self.clock.tick(FPS)
+            pygame.display.update()
+    def end_screen(self):
+        end = True
+
+        if self.game_result == 1:
+            title = self.font.render('You have been caught by a robot!', True, BLACK)
+            title_rect = title.get_rect(x=WIN_WIDTH//2-250, y=WIN_HEIGHT//2-100)
+        elif self.game_result == 2:
+            title = self.font.render('All the robots have crashed into each other and you lived to tell the tale! Good job!', True, BLACK)
+            title_rect = title.get_rect(x=WIN_WIDTH//2-700, y=WIN_HEIGHT//2-100)
+
+        while end:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    end = False
+                    self.running = False
+
+            
+            self.screen.fill((178, 236, 237))
+            self.screen.blit(title, title_rect)
+            self.clock.tick(FPS)
+            pygame.display.update()
+    def thank_screen(self):
+        thank = True
+
+        title = self.font.render('Thanks for playing!', True, BLACK)
+        title_rect = title.get_rect(x=WIN_WIDTH//2-200, y=WIN_HEIGHT//2-100)
+
+        while thank:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    thank = False
+                    self.running = False
+
+            
+            self.screen.fill((178, 236, 237))
+            self.screen.blit(title, title_rect)
+            self.clock.tick(FPS)
+            pygame.display.update()
+
+
+g = Game()
+g.intro_screen()
+g.new()
+
+while g.running:
+    g.main()
+    g.game_over()
+
+pygame.quit()
+sys.exit()
