@@ -85,7 +85,7 @@ class Player(pygame.sprite.Sprite):
                 flag = 0
 
             if game_map[playerLocation[1]+self.y_change][playerLocation[0]+self.x_change] == 'B':
-                print('cant go')
+                print('You can\'t go there!!!!')
                 flag = 0
                 self.x_change = 0
                 self.y_change = 0

@@ -10,8 +10,8 @@ PlayerChar = '@'
 DeadRobotChar = 'X'
 RobotChar = 'R'
 
-DeadRobot = 2
-Total_Robots = 10
+DeadRobot = DEAD_ROBOT
+Total_Robots = TOTAL_ROBOT
 Total_Walls = 100
 MapWidth = 40
 MapHeight = 20
